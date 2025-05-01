@@ -1,6 +1,6 @@
 import os
-from flask import Flask, jsonify
-from models import setup_db, Person # models.py greift auf DATABASE_URL zu
+from flask import Flask, jsonify, request
+from models import setup_db, Person, db # models.py greift auf DATABASE_URL zu
 from flask_cors import CORS
 from dotenv import load_dotenv # <<<--- 1. Importieren
 
@@ -15,8 +15,6 @@ def create_app(test_config=None):
 
     @app.route('/')
     def get_greeting():
-        # Greift jetzt auf die Variable aus .env zurück
-        # Besser .get() verwenden, falls die Variable fehlt:
         excited = os.environ.get('EXCITED', 'false')
         greeting = "Hello"
         if excited == 'true':
@@ -54,7 +52,8 @@ def create_app(test_config=None):
         except Exception as e:
             print(f"Error: {e}")
             return jsonify({"error": "An error occurred while fetching hthe person."}), 500
-        
+
+ 
     @app.route('/get-people/<int:person_id>/catchphrase')
     def get_person_catchphrase(person_id):
         try:
@@ -67,6 +66,28 @@ def create_app(test_config=None):
         except Exception as e:
             print(f"Error: {e}")
             return jsonify({"error": "An error occurred while fetching the person's catchphrase."}), 500
+        
+
+    @app.route('/add-people', methods=['POST'])
+    def add_people():
+        try:
+            data = request.get_json()
+            name = data.get('name')
+            catchphrase = data.get('catchphrase', '')
+
+            if not name:
+                return jsonify({"error": "Name is required."}), 400
+
+            new_person = Person(name=name, catchphrase=catchphrase)
+            db.session.add(new_person)
+            db.session.commit()
+
+            return jsonify({"person": new_person.format()}), 201
+
+        except Exception as e:
+            print(f"Error: {e}")
+            return jsonify({"error": "An error occurred while adding the person."}), 500
+        
     return app   
     
 
